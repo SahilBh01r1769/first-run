@@ -24,6 +24,12 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(observe_failure("NameError: missing_name").category, "source error")
         self.assertEqual(observe_failure("something unusual happened").category, "unclear failure")
 
+    def test_flask_missing_app_is_named_as_entry_point_issue(self):
+        error = "Error: Failed to find Flask application or factory in module 'app'. Use 'app:name' to specify one."
+        observed = observe_failure(error)
+        self.assertEqual(observed.category, "entry point issue")
+        self.assertIn("Failed to find Flask application", observed.detail)
+
     def test_http_404_is_not_a_verified_running_app(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "project"
