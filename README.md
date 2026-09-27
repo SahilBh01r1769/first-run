@@ -42,7 +42,7 @@ Inspections are repeat limited, launch routes are tried once, and the decision a
 | [Mythos](https://github.com/SahilBh01r1769/indo_european_gods), npm web project | HTTP 200 on port 4173; Stop and Start again worked without reinstalling on Linux. |
 | [MDN Django Local Library](https://github.com/mdn/django-locallibrary-tutorial) | On a fresh checkout, missing local SQLite tables led to a controlled migration and then HTTP 200 on Linux. |
 | Bundled Flask project with port 5000 occupied | Started on port 5001 and verified HTTP 200 on Linux. |
-| Bundled Flask recovery sample | Rules recovered to `main.py` on Linux. A real OpenAI response selected that route on Windows and HTTP 200 was verified. |
+| Bundled Flask recovery sample | Rules recovered to `main.py` on Linux. On Windows, a real AI run inspected the entry files, chose `main.py`, and verified HTTP 200. |
 | [MDN Express Local Library](https://github.com/mdn/express-locallibrary-tutorial) | Reported **Needs input** when MongoDB was unreachable; the external database was not supplied. |
 | [FastAPI example](https://github.com/vahidrezazadeh/fastapi-example) | Stopped at an application `NameError` without editing source. |
 
