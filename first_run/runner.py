@@ -33,9 +33,9 @@ class Outcome:
 
 @dataclass
 class RecoveryState:
-    attempted: set[int]
+    tried_routes: set[int]
     inspections_used: set[str]
-    decisions_left: int = 6
+    decisions_remaining: int = 6
 
 
 class SetupRunner:
@@ -226,15 +226,15 @@ class SetupRunner:
         if self.cancelled.is_set():
             return Outcome("Blocked", "Run cancelled.")
 
-        index = routes.index(previous) if previous else 0
+        route_index = routes.index(previous) if previous else 0
         recovery = RecoveryState(set(), set())
         migrations_checked = False
         # Each route is tried once; the final decision may still explain a blocker.
         for attempt_no in range(min(len(routes), 5)):
-            recovery.attempted.add(index)
-            result = self._launch_verify(routes[index])
+            recovery.tried_routes.add(route_index)
+            result = self._launch_verify(routes[route_index])
             if result.state == "Running":
-                save_project(self.info.path, self.verified_launch or routes[index])
+                save_project(self.info.path, self.verified_launch or routes[route_index])
                 return result
             if self.cancelled.is_set():
                 return result
@@ -242,46 +242,46 @@ class SetupRunner:
             if (not migrations_checked and self.info.framework == "django"
                     and "unapplied migration" in failure_output and "no such table" in failure_output):
                 migrations_checked = True
-                recovered = self._recover_django_migrations(routes[index])
+                recovered = self._recover_django_migrations(routes[route_index])
                 if recovered is not None:
                     if recovered.state == "Running":
-                        save_project(self.info.path, self.verified_launch or routes[index])
+                        save_project(self.info.path, self.verified_launch or routes[route_index])
                     return recovered
-            facts = (f"Detected {self.info.framework} ({self.info.kind})",
-                     f"Failed route: {' '.join(routes[index])}",
-                     f"Routes tried: {len(recovery.attempted)} of {len(routes)}", *self.info.observations)
+            project_facts = (f"Detected {self.info.framework} ({self.info.kind})",
+                             f"Failed route: {' '.join(routes[route_index])}",
+                             f"Routes tried: {len(recovery.tried_routes)} of {len(routes)}", *self.info.observations)
             observed = observe_failure(result.detail)
             self.report(f"Observed: {observed.category}: {observed.detail}")
-            output = "\n".join(self.output[-100:])
-            failure = result.detail
-            new_observations: list[str] = []
+            recent_output = "\n".join(self.output[-100:])
+            failure_details = result.detail
+            inspection_results: list[str] = []
             while True:
-                if recovery.decisions_left == 0:
+                if recovery.decisions_remaining == 0:
                     return Outcome("Blocked", "Recovery decision limit reached.")
-                can_inspect = ("inspect_output" not in recovery.inspections_used
-                               and len(output) > len(result.detail) + 400)
-                can_inspect_entries = ("inspect_entry_points" not in recovery.inspections_used
-                                       and self.info.framework in ("flask", "fastapi")
-                                       and any(i not in recovery.attempted for i in range(len(routes))))
+                can_inspect_output = ("inspect_output" not in recovery.inspections_used
+                                      and len(recent_output) > len(result.detail) + 400)
+                can_inspect_entry_points = ("inspect_entry_points" not in recovery.inspections_used
+                                            and self.info.framework in ("flask", "fastapi")
+                                            and any(i not in recovery.tried_routes for i in range(len(routes))))
                 decision = decide_failure(
-                    failure, routes, recovery.attempted.copy(), (*facts, *new_observations),
-                    api_key=self.api_key, can_inspect_output=can_inspect,
-                    can_inspect_entries=can_inspect_entries,
+                    failure_details, routes, recovery.tried_routes.copy(), (*project_facts, *inspection_results),
+                    api_key=self.api_key, can_inspect_output=can_inspect_output,
+                    can_inspect_entries=can_inspect_entry_points,
                     inspections_used=tuple(sorted(recovery.inspections_used)),
-                    decisions_remaining=recovery.decisions_left,
+                    decisions_remaining=recovery.decisions_remaining,
                 )
-                recovery.decisions_left -= 1
+                recovery.decisions_remaining -= 1
                 self.report(f"Recovery ({decision.source}): {decision.action.replace('_', ' ').capitalize()} — {decision.reason}")
                 if decision.action not in ("inspect_output", "inspect_entry_points"):
                     break
-                if decision.action == "inspect_output" and can_inspect:
+                if decision.action == "inspect_output" and can_inspect_output:
                     recovery.inspections_used.add("inspect_output")
-                    failure = result.detail + "\nAdditional captured process output:\n" + output[-5000:]
+                    failure_details = result.detail + "\nAdditional captured process output:\n" + recent_output[-5000:]
                     self.report("Observed: inspected more of the captured process output.")
-                elif decision.action == "inspect_entry_points" and can_inspect_entries:
+                elif decision.action == "inspect_entry_points" and can_inspect_entry_points:
                     recovery.inspections_used.add("inspect_entry_points")
                     observation = self._entry_point_hints()
-                    new_observations.append(observation)
+                    inspection_results.append(observation)
                     self.report("Observed: " + observation)
                 else:
                     return Outcome("Blocked", "Recovery requested an unavailable or repeated inspection.")
@@ -290,11 +290,11 @@ class SetupRunner:
             if decision.action != "retry_launch":
                 return Outcome("Blocked", decision.reason)
             # Validate again at the execution boundary, including mocked or future deciders.
-            if decision.candidate in recovery.attempted or not 0 <= decision.candidate < len(routes):
+            if decision.candidate in recovery.tried_routes or not 0 <= decision.candidate < len(routes):
                 return Outcome("Blocked", "Recovery selected an invalid or previously tried route.")
             if attempt_no == 4:
                 return Outcome("Blocked", "Recovery attempt limit reached; no further route was started.")
-            index = decision.candidate
+            route_index = decision.candidate
             self.report("Trying another detected entry point after the failed launch.")
         return Outcome("Blocked", "Recovery attempt limit reached; no further route was started.")
 

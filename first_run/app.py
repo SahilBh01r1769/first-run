@@ -110,16 +110,16 @@ class MainWindow(QMainWindow):
         source_row = QHBoxLayout()
         source_row.addWidget(self.source)
         source_row.addWidget(browse)
-        self.example_path = Path(__file__).resolve().parent.parent / "examples" / "flask_hello"
-        self.recovery_example_path = Path(__file__).resolve().parent.parent / "examples" / "flask_recovery"
-        if self.example_path.is_dir():
-            example = QPushButton("Try example")
-            example.clicked.connect(self.choose_example)
-            source_row.addWidget(example)
-        if self.recovery_example_path.is_dir():
-            recovery_example = QPushButton("Try recovery")
-            recovery_example.clicked.connect(self.choose_recovery_example)
-            source_row.addWidget(recovery_example)
+        self.sample_path = Path(__file__).resolve().parent.parent / "examples" / "flask_hello"
+        self.recovery_sample_path = Path(__file__).resolve().parent.parent / "examples" / "flask_recovery"
+        if self.sample_path.is_dir():
+            sample_button = QPushButton("Sample app")
+            sample_button.clicked.connect(self.choose_sample)
+            source_row.addWidget(sample_button)
+        if self.recovery_sample_path.is_dir():
+            recovery_button = QPushButton("Recovery sample")
+            recovery_button.clicked.connect(self.choose_recovery_sample)
+            source_row.addWidget(recovery_button)
 
         self.destination = QLineEdit()
         self.destination.setPlaceholderText("Folder to create when cloning")
@@ -218,6 +218,8 @@ class MainWindow(QMainWindow):
     def _record_recovery(self, label: str, detail: str):
         self.recovery_steps.append(f"{label} · {detail[:180]}")
         self.recovery_trace.setPlainText("\n".join(self.recovery_steps[-6:]))
+        scrollbar = self.recovery_trace.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def show_observation(self, detail: str):
         self.observation.setText(detail)
@@ -226,21 +228,21 @@ class MainWindow(QMainWindow):
     def show_decision(self, source: str, reason: str):
         self.decision_source.setText(source)
         self.recovery.setText(reason)
-        self._record_recovery(source, reason)
+        self._record_recovery(f"{source.upper() if source == 'AI' else source.capitalize()} action", reason)
 
     def browse_source(self):
         path = QFileDialog.getExistingDirectory(self, "Select project folder")
         if path:
             self.source.setText(path)
 
-    def choose_example(self):
-        self.source.setText(str(self.example_path))
+    def choose_sample(self):
+        self.source.setText(str(self.sample_path))
         self.destination.clear()
         self.recent.setCurrentIndex(0)
         self.start.setText("Set up and run")
 
-    def choose_recovery_example(self):
-        self.source.setText(str(self.recovery_example_path))
+    def choose_recovery_sample(self):
+        self.source.setText(str(self.recovery_sample_path))
         self.destination.clear()
         self.recent.setCurrentIndex(0)
         self.start.setText("Set up and run")
