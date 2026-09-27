@@ -228,6 +228,8 @@ class MainWindow(QMainWindow):
     def show_decision(self, source: str, reason: str):
         self.decision_source.setText(source)
         self.recovery.setText(reason)
+        if source == "AI":
+            self.key_status.setText("Connected")
         self._record_recovery(f"{source.upper() if source == 'AI' else source.capitalize()} action", reason)
 
     def browse_source(self):

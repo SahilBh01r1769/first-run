@@ -113,6 +113,18 @@ class WindowTests(unittest.TestCase):
             window.process_watch.stop()
             window.close()
 
+    def test_live_ai_decision_confirms_connection_without_key_check(self):
+        window = MainWindow()
+        try:
+            self.assertEqual(window.key_status.text(), "Not checked")
+            window.reporter.report("Recovery (AI): Retry launch — Try main.py")
+            self.assertEqual(window.key_status.text(), "Connected")
+            window.api_key.setText("different-key")
+            self.assertEqual(window.key_status.text(), "Not checked")
+        finally:
+            window.process_watch.stop()
+            window.close()
+
     def test_recovery_trace_keeps_inspection_and_second_decision_in_order(self):
         window = MainWindow()
         try:
